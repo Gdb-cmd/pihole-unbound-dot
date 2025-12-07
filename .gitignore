@@ -1,0 +1,9 @@
+# Exclude temporary files
+*.log
+*-backup-*
+.env
+
+# Exclude Docker data
+.docker/
+
+# Note: docker-compose.yml is included in this repo as it contains sanitized placeholders
