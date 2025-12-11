@@ -575,6 +575,105 @@ docker exec gdb-redis-cache redis-cli info replication | grep -E "(connected_cli
 docker exec gdb-unbound-dot ps aux
 ```
 
+## Maintenance & Monitoring Tools
+
+This repository includes two manual utility scripts for system maintenance:
+
+### 📊 daily-check.sh - Health Monitoring
+
+**Purpose:** Manual health check script for monitoring system status and performance.
+
+**Features:**
+* Auto-detects Pi-hole IP (container or host fallback)
+* Auto-detects container names from docker-compose.yml
+* Tests DNS resolution, ad blocking, and cache performance
+* Checks for errors in container logs
+* Verifies Docker volume health
+* Fully portable - works with any deployment configuration
+
+**Usage:**
+```bash
+# Make executable (first time only)
+chmod +x daily-check.sh
+
+# Run the health check
+./daily-check.sh
+```
+
+**When to run:**
+* Weekly routine checks
+* After system updates or changes
+* When troubleshooting issues
+* Before/after router or network changes
+
+**Optional automation:**
+```bash
+# Add to crontab for weekly checks (Sundays at 9 AM)
+crontab -e
+# Add: 0 9 * * 0 /path/to/gdb-pihole-unbound/daily-check.sh >> /var/log/pihole-health.log 2>&1
+```
+
+### 🔄 interactive-update.sh - Update Management
+
+**Purpose:** Manual update checking and management tool with automated backup and rollback.
+
+**Features:**
+* Auto-detects project directory and all configurations
+* Checks for available updates to Pi-hole, Redis, and Unbound
+* Creates backups before updates with rollback capability
+* Verifies system health after updates
+* Comprehensive logging to `~/pihole-backups/logs/`
+* Stops automatically if all components are current
+
+**Usage:**
+```bash
+# Make executable (first time only)
+chmod +x interactive-update.sh
+
+# Check for updates
+./interactive-update.sh
+```
+
+**What it does:**
+1. **Phase 0:** Checks dependencies and auto-detects environment
+2. **Phase 1:** Gathers current version information
+3. **Phase 2:** Checks for available updates
+4. **Phase 3:** Analyzes and provides recommendations
+5. **Phase 4-8:** If updates found, performs backup → update → verify → rollback if needed
+
+**When to run:**
+* Monthly update checks (recommended)
+* When you want to check component versions
+* Before planning system maintenance
+
+**Optional automation:**
+```bash
+# Add to crontab for monthly update checks (1st of month at 2 AM)
+crontab -e
+# Add: 0 2 1 * * /path/to/gdb-pihole-unbound/interactive-update.sh >> /var/log/pihole-updates.log 2>&1
+```
+
+### 📁 Backup Location
+
+Both scripts use `~/pihole-backups/` for storing:
+* Configuration backups (before updates)
+* Log files (update history and health checks)
+* Timestamped snapshots
+
+**Manual backup retention:**
+```bash
+# Keep only recent backups (older than 30 days)
+find ~/pihole-backups -type d -name "202*" -mtime +30 -exec rm -rf {} \;
+```
+
+### ⚠️ Important Notes
+
+* **Manual execution required:** These scripts do not run automatically unless you add them to cron
+* **Permissions:** Both scripts need executable permissions (`chmod +x`)
+* **Network required:** Update script needs internet access to check for updates
+* **Backup space:** Ensure sufficient disk space for backups (typically <100MB per backup)
+* **Logs:** Check `~/pihole-backups/logs/` if scripts encounter issues
+
 ## Performance Expectations
 
 - **First DNS query**: 20-50ms (DoT to Quad9)
