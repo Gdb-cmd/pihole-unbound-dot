@@ -8,6 +8,16 @@
 
 Developed through systematic debugging of existing deployment guides, solving 15+ critical compatibility issues to create a production-ready solution.
 
+---
+
+## 🚀 Quick Navigation
+
+**Choose your deployment method:**
+- 📦 [**Quick Start - Clone & Deploy**](#quick-start---clone--deploy) *(5 minutes - recommended for most users)*
+- 📚 [**Detailed Manual Setup**](#detailed-manual-setup) *(15 minutes - learn each component)*
+
+---
+
 ## 🏗️ **Architecture**
 
 This deployment uses:
@@ -63,13 +73,114 @@ ip route | grep default    # Should show your router IP
 docker-compose --version | grep -E "(1\.2[9-9]|1\.[3-9][0-9]|[2-9]\.|[1-9][0-9]\.)"
 ```
 
-## Deployment
+---
+
+## 🚀 Quick Start - Clone & Deploy
+
+**Best for:** Users who want the fastest path to a working deployment (files are pre-configured).
+
+### Steps
+
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/Gdb-cmd/pihole-unbound-dot.git
+cd pihole-unbound-dot
+```
+
+**Note:** Your project directory will be named `pihole-unbound-dot` when cloning. This is normal and doesn't affect functionality. Container names (defined in docker-compose.yml) will be `gdb-pihole`, `gdb-redis-cache`, and `gdb-unbound-dot` regardless of your directory name.
+
+#### 2. Generate Redis Seed and Create Cache Configuration
+```bash
+REDIS_SEED=$(openssl rand -base64 32)
+cat > unbound/conf.d/cachedb.conf << EOF
+cachedb:
+    backend: "redis"
+    redis-server-host: redis
+    redis-server-port: 6379
+    redis-timeout: 100
+    redis-expire-records: yes
+    redis-logical-db: 0
+    secret-seed: "$REDIS_SEED"
+EOF
+echo "✅ Redis configuration created with seed: $REDIS_SEED"
+```
+
+#### 3. Customize docker-compose.yml
+```bash
+nano docker-compose.yml
+
+# Update these values:
+# - In 'pihole' service environment: TZ: 'Europe/Dublin' → Your timezone (e.g., 'America/New_York')
+# - In 'pihole' service environment: WEBPASSWORD: 'YourSecurePassword123!' → Your secure password
+# - In 'redis' service command: --maxmemory 256mb → Adjust for your system:
+#   * 512MB system: use 64mb
+#   * 1GB system: use 128mb
+#   * 2GB+ system: use 512mb
+```
+
+**Save and exit:** `Ctrl+X`, then `Y`, then `Enter`
+
+#### 4. Optional: Configure Static IP
+
+If you need a static IP for your Pi-hole server (recommended for reliability), follow the [Static IP Configuration guide](#6-configure-static-ip-if-needed) in the Detailed Manual Setup section.
+
+Otherwise, skip to the next step.
+
+#### 5. Deploy
+```bash
+# Build and start all services
+docker-compose up -d --build
+
+# Wait for startup (custom build takes longer)
+sleep 60
+
+# Verify all containers are running
+docker-compose ps
+# Expected: All containers should show "healthy" status
+```
+
+#### 6. Post-Deployment Configuration
+
+**⚠️ CRITICAL: Complete these steps before testing!**
+
+Follow these configuration steps from the Detailed Manual Setup:
+- [8.1 Initialize Pi-hole Web Interface Password](#81-initialize-pi-hole-web-interface-password)
+- [8.2 Configure Pi-hole Network Access & DNS Settings](#82-configure-pi-hole-network-access--dns-settings)
+- [8.3 Verify Configuration Applied](#83-verify-configuration-applied)
+
+#### 7. Configure Your Router
+
+Follow [9: Configure Router](#9-configure-router) to point all network devices to your Pi-hole.
+
+#### 8. Test Everything
+
+Follow [10: Test Everything](#10-test-everything) to verify your deployment is working correctly.
+
+---
+
+**✅ Deployment Complete!** 
+
+Your Pi-hole + Unbound + Redis system is now running. For troubleshooting, monitoring, and maintenance, see:
+- [Access & Monitoring](#access--monitoring)
+- [Maintenance & Monitoring Tools](#maintenance--monitoring-tools)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## 📚 Detailed Manual Setup
+
+**Best for:** Users who want to understand each component or use a custom directory name.
+
+This section provides step-by-step instructions to create all files manually.
 
 ### 1. Create Project Structure
 ```bash
+# You can use any directory name you prefer
 mkdir -p gdb-pihole-unbound/unbound/conf.d
 cd gdb-pihole-unbound
 ```
+
+**Note:** The guide uses `gdb-pihole-unbound` as an example, but you can name it anything (e.g., `my-pihole`, `dns-server`, etc.).
 
 ### 2. Generate Redis Security Seed
 ```bash
@@ -554,6 +665,8 @@ echo "=== Verifying upstream DNS configuration ==="
 docker exec gdb-pihole grep -r "172.21.0.20" /etc/pihole/ || echo "⚠️ Upstream DNS not configured - complete step 8.3"
 ```
 
+---
+
 ## Access & Monitoring
 
 **Pi-hole Web Interface:**
@@ -610,7 +723,10 @@ chmod +x daily-check.sh
 ```bash
 # Add to crontab for weekly checks (Sundays at 9 AM)
 crontab -e
-# Add: 0 9 * * 0 /path/to/gdb-pihole-unbound/daily-check.sh >> /var/log/pihole-health.log 2>&1
+# Add: 0 9 * * 0 /path/to/your-project-directory/daily-check.sh >> /var/log/pihole-health.log 2>&1
+# Replace /path/to/your-project-directory with your actual path:
+#   - If you cloned: ~/pihole-unbound-dot/daily-check.sh
+#   - If manual setup: ~/gdb-pihole-unbound/daily-check.sh (or your chosen directory name)
 ```
 
 ### 🔄 interactive-update.sh - Update Management
@@ -650,7 +766,10 @@ chmod +x interactive-update.sh
 ```bash
 # Add to crontab for monthly update checks (1st of month at 2 AM)
 crontab -e
-# Add: 0 2 1 * * /path/to/gdb-pihole-unbound/interactive-update.sh >> /var/log/pihole-updates.log 2>&1
+# Add: 0 2 1 * * /path/to/your-project-directory/interactive-update.sh >> /var/log/pihole-updates.log 2>&1
+# Replace /path/to/your-project-directory with your actual path:
+#   - If you cloned: ~/pihole-unbound-dot/interactive-update.sh
+#   - If manual setup: ~/gdb-pihole-unbound/interactive-update.sh (or your chosen directory name)
 ```
 
 ### 📁 Backup Location
@@ -722,13 +841,13 @@ If you need to completely remove the deployment and start fresh:
 
 ### Remove Containers and Volumes
 ```bash
-cd ~/gdb-pihole-unbound
+cd ~/pihole-unbound-dot  # or ~/gdb-pihole-unbound depending on your setup
 docker-compose down -v --remove-orphans
 ```
 
 ### Remove Docker Images
 ```bash
-docker image rm gdb-pihole-unbound_unbound || echo "Custom Unbound image not found"
+docker image rm gdb-pihole-unbound_unbound pihole-unbound-dot_unbound || echo "Custom Unbound image not found"
 docker image rm pihole/pihole:latest || echo "Pi-hole image not found"  
 docker image rm redis:7-alpine || echo "Redis image not found"
 docker image rm alpine:latest || echo "Alpine image not found"
@@ -738,7 +857,7 @@ docker system prune -f
 ### Remove Project Directory
 ```bash
 cd ~
-rm -rf gdb-pihole-unbound
+rm -rf pihole-unbound-dot  # or gdb-pihole-unbound depending on your setup
 ```
 
 ### Verify Complete Cleanup
@@ -750,7 +869,7 @@ docker ps -a | grep -E "(gdb-|pihole|redis)" || echo "✅ No containers found - 
 docker volume ls | grep -E "(gdb-|pihole|redis)" || echo "✅ No volumes found - cleanup successful"
 
 # Check for remaining images
-docker images | grep -E "(gdb-pihole-unbound|pihole|redis|alpine)" || echo "✅ No images found - cleanup successful"
+docker images | grep -E "(gdb-pihole-unbound|pihole-unbound-dot|pihole|redis|alpine)" || echo "✅ No images found - cleanup successful"
 ```
 
 ## 🙏 **Acknowledgments**
